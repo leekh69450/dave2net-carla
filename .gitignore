@@ -1,0 +1,32 @@
+﻿# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Virtual envs
+carla37/
+.venv/
+venv/
+
+# Data
+dataset*/
+data*/
+*.zip
+*.tar
+*.tar.gz
+
+# Weights / outputs
+*.pt
+*.pth
+checkpoints/
+runs/
+wandb/
+logs/
+outputs/
+videos/
+*.png
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
