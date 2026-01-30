@@ -8,7 +8,7 @@ class Dave2Regression(nn.Module):
         Input: (B,3,66,200) YUV normalized to [-1,1]
         Output:
           out_dim=1 -> steer in [-1,1]
-          out_dim=3 -> [throttle, steer, brake] with correct ranges
+          out_dim=3 -> [steer, throttle, brake] with correct ranges
         """
         super().__init__()
         self.out_dim = out_dim
@@ -54,11 +54,11 @@ class Dave2Regression(nn.Module):
             return torch.tanh(out)
 
         if self.out_dim == 3:
-            # [throttle, steer, brake] in [0,1],[-1,1],[0,1]
-            thr   = torch.sigmoid(out[:, 0:1])
-            steer = torch.tanh(out[:, 1:2])
+            # [steer, throttle, brake] in [-1,1],[0,1],[0,1]
+            steer   = torch.tanh(out[:, 0:1])
+            thr = torch.sigmoid(out[:, 1:2])
             brk   = torch.sigmoid(out[:, 2:3])
-            return torch.cat([thr, steer, brk], dim=1)
+            return torch.cat([steer, thr, brk], dim=1)
 
         return out
 

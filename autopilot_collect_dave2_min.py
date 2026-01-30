@@ -194,10 +194,20 @@ def main():
         # Warm up sensor stream
         for _ in range(10):
             world.tick()
+        print("warm up done")
 
         saved = 0
         for i in range(args.steps):
             frame = world.tick()
+            # ALWAYS follow immediately after tick (even if RGB missing)
+            transform = vehicle.get_transform()
+            spectator.set_transform(
+                carla.Transform(
+                    transform.location + carla.Location(x=1.5, z=1.3),
+                    carla.Rotation(pitch=0.0, yaw=transform.rotation.yaw, roll=0.0)
+                )
+            )
+            
 
             # Wait up to 1s for the camera callback with matching frame
             rgb, ts = None, None

@@ -5,7 +5,7 @@ import contextlib
 import torch
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
-from torch import amp
+from torch.cuda import amp
 from Network_Baseline import Dave2Regression
 from Dataset_Baseline import get_dataloader
 
@@ -18,7 +18,7 @@ def train(data_folder, save_path):
     if device.type == 'cuda':
         torch.backends.cudnn.benchmark = True  # faster with fixed shapes
         use_amp = True
-        scaler = amp.GradScaler('cuda')
+        scaler = amp.GradScaler()
         pin = True
     else:
         use_amp = False
@@ -58,11 +58,11 @@ def train(data_folder, save_path):
             actions_row = actions_row.to(device, non_blocking=pin)
 
             optimizer.zero_grad(set_to_none=True)
-            ctx = amp.autocast('cuda') if use_amp else contextlib.nullcontext()
+            ctx = amp.autocast() if use_amp else contextlib.nullcontext()
             with ctx:
                 pred = model(imgs)
                 huber_loss = regression_loss(pred, actions_row)
-                gas_brake_pen = (pred[:, 0] * pred[:, 2]).mean()
+                gas_brake_pen = (pred[:, 1] * pred[:, 2]).mean()
                 loss = huber_loss + 0.1 * gas_brake_pen                         #we want to penalize if it slams both gas and brake
 
 
@@ -92,16 +92,16 @@ def train(data_folder, save_path):
         print(
             f"Epoch {epoch+1:3d}  "
             f"loss: {epoch_loss:.4f}  "
-            f"MAE[t/s/b]: {mae[0]:.3f}/{mae[1]:.3f}/{mae[2]:.3f}  "
-            f"RMSE[t/s/b]: {rmse[0]:.3f}/{rmse[1]:.3f}/{rmse[2]:.3f}  "
+            f"MAE[s/t/b]: {mae[0]:.3f}/{mae[1]:.3f}/{mae[2]:.3f}  "
+            f"RMSE[s/t/b]: {rmse[0]:.3f}/{rmse[1]:.3f}/{rmse[2]:.3f}  "
             f"ETA +{time_left:.1f}s"
         )
         history["loss"].append(epoch_loss)
-        history["mae_thr"].append(mae[0].item())
-        history["mae_str"].append(mae[1].item())
+        history["mae_str"].append(mae[0].item())
+        history["mae_thr"].append(mae[1].item())
         history["mae_brk"].append(mae[2].item())
-        history["rmse_thr"].append(rmse[0].item())
-        history["rmse_str"].append(rmse[1].item())
+        history["rmse_str"].append(rmse[0].item())
+        history["rmse_thr"].append(rmse[1].item())
         history["rmse_brk"].append(rmse[2].item())
 
 

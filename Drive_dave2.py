@@ -59,7 +59,7 @@ def main():
     ap.add_argument("--model_path", required=True)
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=2000)
-    ap.add_argument("--fps", type=int, default=20)
+    ap.add_argument("--fps", type=int, default=10)
     ap.add_argument("--max_steps", type=int, default=5000)
     ap.add_argument("--throttle_gain", type=float, default=1.0)
     ap.add_argument("--steer_gain", type=float, default=1.0)
@@ -139,10 +139,12 @@ def main():
         # Warmup ticks
         for _ in range(10):
             world.tick()
-        print("Warmup ticks done", flush=True)
-
+        print("warm up tick")
+        
+        #vehicle.apply_control(carla.VehicleControl(throttle=0.6, steer=0.0, brake=0.0))
         for t in range(args.max_steps):
             # use last image to compute control
+            
             rgb = latest["rgb"]
             if rgb is None:
                 world.tick()
@@ -152,11 +154,22 @@ def main():
             x = preprocess(rgb).to(device)
 
             with torch.no_grad():
-                pred = model(x)[0]  # (3,): [thr, steer, brk]
+                pred = model(x)[0]  # (3,): [steer, thr, brk]
+            if t % 50 == 0:
+                print("raw pred:", pred.detach().cpu().numpy())
 
-            thr = float((pred[0] * args.throttle_gain).clamp(0.0, 1.0).item())
-            steer = float((pred[1] * args.steer_gain).clamp(-1.0, 1.0).item())
-            brk = 0.0
+
+            steer = float((pred[0] * args.steer_gain).clamp(-1.0, 1.0).item())
+            thr = float((pred[1] * args.throttle_gain).clamp(0.0, 1.0).item())
+            #brk = float((pred[2] * args.brake_gain).clamp(0.0, 1.0).item())
+            #brk = 0.0
+            brk_prob = float(pred[2].item())  # safer than raw pred[2]
+
+            if brk_prob > 0.9:
+                brk = 1.0
+                thr = 0.0
+            else:
+                brk = 0.0
             vehicle.apply_control(
                 carla.VehicleControl(
                     throttle=thr,
@@ -167,20 +180,21 @@ def main():
                     manual_gear_shift=False
                 )
             )
+            if t % 50 == 0:
+                c = vehicle.get_control()
+                print(
+                    f"[t={t}] pred thr={thr:.3f} steer={steer:.3f} brk={brk:.3f} | "
+                    f"actual thr={c.throttle:.3f} steer={c.steer:.3f} brk={c.brake:.3f}",
+                    flush=True
+                )
             world.tick()
             follow(vehicle)
 
             if t % 50 == 0:
-                c = vehicle.get_control()
                 v = vehicle.get_velocity()
                 speed = (v.x*v.x + v.y*v.y + v.z*v.z) ** 0.5
                 loc = vehicle.get_location()
-                print(
-                    f"[t={t}] pred thr={thr:.3f} steer={steer:.3f} brk={brk:.3f} | "
-                    f"actual thr={c.throttle:.3f} steer={c.steer:.3f} brk={c.brake:.3f} hb={c.hand_brake} rev={c.reverse} mgs={c.manual_gear_shift} gear={c.gear} | "
-                    f"speed={speed:.3f} loc=({loc.x:.1f},{loc.y:.1f})",
-                    flush=True
-                )
+                print(f"[t={t}] speed={speed:.3f} loc=({loc.x:.1f},{loc.y:.1f})", flush=True)
 
 
     finally:
