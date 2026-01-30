@@ -9,6 +9,7 @@ carla37/
 venv/
 
 # Data
+dave2_weather/
 dataset*/
 data*/
 *.zip
