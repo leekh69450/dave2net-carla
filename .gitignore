@@ -26,6 +26,10 @@ outputs/
 videos/
 *.png
 
+# Evaluation / scratch outputs
+*.csv
+d0/
+
 # OS / editor
 .DS_Store
 Thumbs.db
